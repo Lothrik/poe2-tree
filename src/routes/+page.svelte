@@ -57,8 +57,11 @@
 	let hideUnselected = false;
 	let hideSmall = false;
 
+	// State for Regex Search toggle
+	let isRegexSearch = false;
+
 	// Reactive statement for search
-	$: handleSearch(searchTerm);
+	$: isRegexSearch && handleSearch(searchTerm);
 
 	if (browser) {
 		const params = new URLSearchParams(window.location.search);
@@ -346,14 +349,31 @@
 
 		const search = text.toLowerCase();
 
-		searchResults = Object.entries(nodes)
-			.filter(
-				([_, values]) =>
-					values.id.includes(search) ||
-					values.name.toLowerCase().includes(search) ||
-					values.description.some((value) => value.toLowerCase().includes(search))
-			)
-			.map(([key, _]) => key);
+		if (isRegexSearch) {
+			try {
+				const regex = new RegExp(search);
+				searchResults = Object.entries(nodes)
+					.filter(
+						([_, values]) =>
+							regex.test(values.id) ||
+							regex.test(values.name.toLowerCase()) ||
+							values.description.some((value) => regex.test(value.toLowerCase()))
+					)
+					.map(([key, _]) => key);
+			} catch (error) {
+				console.error('Invalid regular expression:', error);
+				searchResults = [];
+			}
+		} else {
+			searchResults = Object.entries(nodes)
+				.filter(
+					([_, values]) =>
+						values.id.includes(search) ||
+						values.name.toLowerCase().includes(search) ||
+						values.description.some((value) => value.toLowerCase().includes(search))
+				)
+				.map(([key, _]) => key);
+		}
 	}
 
 	function clampPanOffsets() {
@@ -564,6 +584,11 @@
 				<!-- Search -->
 				<div class="min-h-0 grid grid-cols-1 grid-rows-[auto_auto_auto_1fr]">
 					<b class="block underline underline-offset-2">Search:</b>
+					<!-- Regex Search Checkbox -->
+					<label class="whitespace-nowrap">
+						<input type="checkbox" bind:checked={isRegexSearch} />
+						<span>Regex Mode:</span>
+					</label>
 					<!-- Search Input Container -->
 					<div class="relative inline-block">
 						<input
